@@ -92,7 +92,9 @@ theta_r_dot = freq * cos(freq * time);
 theta_r_2dot = -freq^2 * sin(freq * time);
 
 %% Initialize variables for DiffTune iterations
-learningRate = 0.005;  % Calculate       0.5 kunne ikke finde bedre løsning, 0.05 så rammer den k_vec = 0.1 for alle
+learningRate = 0.005;
+lambda = 0.01;
+alpha_star = 1;
 maxIterations = 100;
 itr = 0;
 
@@ -118,6 +120,10 @@ while (1)
     loss = 0;
     theta_gradient = zeros(1, dim_controllerParameters);
 
+    % Storage for sensitivity norms
+    dx_dtheta_norm_sum = 0;
+    du_dtheta_norm_sum = 0;
+
     for k = 1 : length(time) - 1
        
         % Load current state and current reference
@@ -133,9 +139,19 @@ while (1)
         % Accumulate the loss
         % (loss is the squared norm of the position tracking error (error_theta = theta_r - theta_l))
         loss = loss + (Xref - X(4))^2;
+        
+        % Loss w/respect to state X
+        dloss_dx = 2 * [0 0 0 X(4)-Xref];
+
+        % Loss w/respect to control input u
+        dloss_du = 2 * (Xref - X(4));
 
         % Accumulating the gradient of loss w/ respect to controller parameters
-        theta_gradient = theta_gradient + 2 * [0 0 0 X(4)-Xref] * dx_dtheta;
+        theta_gradient = theta_gradient + dloss_dx * dx_dtheta + dloss_du * du_dtheta; %dloss_dx * dx_dtheta = 1 x 3 matrix dloss_du * du_dtheta = 3 x 1
+
+        % Accumulate the norms for alpha_star calculation
+        dx_dtheta_norm_sum = dx_dtheta_norm_sum + norm(dx_dtheta * theta_gradient', 2)^2;
+        du_dtheta_norm_sum = du_dtheta_norm_sum + norm(du_dtheta * theta_gradient', 2)^2;
 
         % Integrate the ode dynamics
         [~,sold] = ode45(@(t,X)dynamics(t, X, u, param'),[time(k) time(k+1)], X);
@@ -153,6 +169,18 @@ while (1)
     loss_hist = [loss_hist loss];
     rmse_hist = [rmse_hist RMSE];
 
+    % Numerator for alpha_star
+    num = 0.5 * (theta_gradient)*theta_gradient';
+
+    % Denominator for alpha star
+    den = dx_dtheta_norm_sum + lambda * du_dtheta_norm_sum;
+
+    % Alpha star
+    alpha_star = (num/den);
+
+    % Learning rate update
+    learningRate = learningRate + alpha_star; 
+
     % Update the gradient
     gradientUpdate = - learningRate * theta_gradient;
 
@@ -164,12 +192,18 @@ while (1)
 
     % Gradient descent
     k_vec = k_vec + gradientUpdate';    % ' used for transposing matrix or vector
+    
 
+   fprintf('k_vec = \n');
+   disp(k_vec);
     % store the parameters
     param_hist = [param_hist k_vec];
 
+    % Learning-rate update
+    learningRate = learningRate + alpha_star;
+
     % Plotting
-    % set(gcf,'Position',[172 120 950 455]);
+    set(gcf,'Position',[100, 100, 1000, 600]);
     set(gcf,'color','w');
 
     % Position (theta_l) tracking
@@ -191,7 +225,7 @@ while (1)
     grid on;
     stem(length(rmse_hist),rmse_hist(end),'Color',[0 0.4470 0.7410]);
 
-    xlim([0 100]);
+    xlim([0 maxIterations]);
     ylim([0 rmse_hist(1)*1.1]);
     text(50,0.3,['iteration = ' num2str(length(rmse_hist))],'FontSize',12);
     xlabel('iterations');

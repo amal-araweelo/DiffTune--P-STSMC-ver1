@@ -1,4 +1,4 @@
-# Hyperparameter-free auto-tuning of a P-STSMC controller applied to a machine tool drive train (via DiffTune+)
+# Auto-tuning of a P-STSMC controller applied to a machine tool drive train (via DiffTune)
 
 To read more on the DiffTune tool set visit the following repository:
 

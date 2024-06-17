@@ -150,13 +150,13 @@ while (1)
         dloss_dx = 2 * [0 0 0 X(4)-Xref];
 
         % Loss w/respect to control input u
-        dloss_du = 2 * (Xref - X(4)); % What is the loss w/respect to control input u
+        dloss_du = 0;
 
         % Accumulate the loss (mean-squared-error (MSE))
         loss = loss + norm(Xref-X(4))^2;      % (Xref-X(4))^2 = (X(4)-Xref)^2
 
         % Accumulating the gradient of loss w/ respect to controller parameters
-        theta_gradient = theta_gradient + dloss_dx * dx_dtheta;
+        theta_gradient = theta_gradient + dloss_dx * dx_dtheta + dloss_du * du_dtheta;
 
         % Accumulate the norms for alpha_star calculation
         dx_dtheta_norm_sum = dx_dtheta_norm_sum + norm(dx_dtheta * theta_gradient', 2)^2;

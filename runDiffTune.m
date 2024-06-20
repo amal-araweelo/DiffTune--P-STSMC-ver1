@@ -92,7 +92,7 @@ theta_r_2dot = - freq^2 * sin(freq * time);
 learningRate = 1; 
 lambda = 1;
 alpha_star = 1;
-maxIterations = 100;
+maxIterations = 50;
 itr = 0;
 
 loss_hist = [];  % storage of the loss value in each iteration
